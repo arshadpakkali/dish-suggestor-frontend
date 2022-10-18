@@ -1,63 +1,94 @@
 import Box from "@mui/material/Box/Box";
-import Card from "@mui/material/Card/Card";
-import CardContent from "@mui/material/CardContent/CardContent";
-import { DataGrid, GridColDef, GridValueGetterParams } from "@mui/x-data-grid";
+import { DataGrid, GridColDef } from "@mui/x-data-grid";
+import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
+import React, { useState } from "react";
+import { Dish, PageQueryDto, PaginatedResponseDto } from "../../models";
 
 const columns: GridColDef[] = [
-  { field: "id", headerName: "ID", width: 90 },
   {
-    field: "firstName",
-    headerName: "First name",
-    width: 150,
-    editable: true,
+    field: "name",
+    headerName: "Name",
   },
   {
-    field: "lastName",
-    headerName: "Last name",
-    width: 150,
-    editable: true,
+    field: "diet",
+    headerName: "Diet",
   },
   {
-    field: "age",
-    headerName: "Age",
-    type: "number",
-    width: 110,
-    editable: true,
+    field: "prep_time",
+    headerName: "Prep Time",
   },
   {
-    field: "fullName",
-    headerName: "Full name",
-    description: "This column has a value getter and is not sortable.",
-    sortable: false,
-    width: 160,
-    valueGetter: (params: GridValueGetterParams) =>
-      `${params.row.firstName || ""} ${params.row.lastName || ""}`,
+    field: "cook_time",
+    headerName: "Cook Time",
+  },
+  {
+    field: "course",
+    headerName: "Course",
+  },
+  {
+    field: "flavor_profile",
+    headerName: "Flavor Profile",
+  },
+  {
+    field: "state",
+    headerName: "state",
+  },
+  {
+    field: "region",
+    headerName: "Region",
   },
 ];
 
-const rows = [
-  { id: 1, lastName: "Snow", firstName: "Jon", age: 35 },
-  { id: 2, lastName: "Lannister", firstName: "Cersei", age: 42 },
-  { id: 3, lastName: "Lannister", firstName: "Jaime", age: 45 },
-  { id: 4, lastName: "Stark", firstName: "Arya", age: 16 },
-  { id: 5, lastName: "Targaryen", firstName: "Daenerys", age: null },
-  { id: 6, lastName: "Melisandre", firstName: null, age: 150 },
-  { id: 7, lastName: "Clifford", firstName: "Ferrara", age: 44 },
-  { id: 8, lastName: "Frances", firstName: "Rossini", age: 36 },
-  { id: 9, lastName: "Roxie", firstName: "Harvey", age: 65 },
-];
+const fetchDishesPaginated = async (pageOpts: PageQueryDto) =>
+  (
+    await axios.get<PaginatedResponseDto<Dish>>(
+      `http://localhost:3000/dishes?page[currentPage]=${pageOpts.currentPage}&page[perPage]=${pageOpts.perPage}`
+    )
+  ).data;
+
 export function DishesList() {
-  return (
-    <Box sx={{ height: 400, width: "100%" }}>
-      <DataGrid
-        rows={rows}
-        columns={columns}
-        pageSize={5}
-        rowsPerPageOptions={[5]}
-        checkboxSelection
-        disableSelectionOnClick
-        experimentalFeatures={{ newEditingApi: true }}
-      />
-    </Box>
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(5);
+
+  const { data, isLoading, error } = useQuery(
+    ["dishes", page, pageSize],
+    async () => fetchDishesPaginated({ perPage: pageSize, currentPage: page }),
+    { keepPreviousData: true }
   );
+
+  const [rowCountState, setRowCountState] = React.useState(
+    data?.pagination?.total || 0
+  );
+
+  React.useEffect(() => {
+    setRowCountState((prevRowCountState) =>
+      data?.pagination?.total !== undefined
+        ? data?.pagination?.total
+        : prevRowCountState
+    );
+  }, [data?.pagination?.total, setRowCountState]);
+
+  if (error) return <>Error fetching Data</>;
+
+  if (data)
+    return (
+      <Box sx={{ height: 400, width: "100%" }}>
+        <DataGrid
+          loading={isLoading}
+          rows={data.results.map((x, ix) => ({ ...x, id: ix + 1 }))}
+          columns={columns}
+          pageSize={pageSize}
+          onPageChange={(nePage) => {
+            setPage(nePage);
+          }}
+          onPageSizeChange={(n) => setPageSize(n)}
+          rowCount={rowCountState}
+          rowsPerPageOptions={[5, 10]}
+          paginationMode="server"
+        />
+      </Box>
+    );
+
+  return <></>;
 }
