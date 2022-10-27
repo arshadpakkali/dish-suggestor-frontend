@@ -3,6 +3,7 @@ import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import React, { useState } from "react";
+import { FormattedMessage } from "react-intl";
 import { Dish, PageQueryDto, PaginatedResponseDto } from "../../models";
 
 const columns: GridColDef[] = [
@@ -69,7 +70,7 @@ export function DishesList() {
     );
   }, [data?.pagination?.total, setRowCountState]);
 
-  if (error) return <>Error fetching Data</>;
+  if (error) return <FormattedMessage id="ERROR_MESSAGE" />;
 
   if (data)
     return (
